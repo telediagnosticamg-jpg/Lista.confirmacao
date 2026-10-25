@@ -127,6 +127,10 @@ h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
         alt="Convite: aniversário de 3 anos do Dante, domingo, 15/11/2026, às 15h, no The Bubble. Venham com seus uniformes comemorar comigo!">
     </header>
 
+    <section class="local" aria-label="Endereço da festa">
+      <div><strong>The Bubble</strong><span>Av. Zico Arouca, 440, Via Noroeste, Vale Santo Antônio</span></div>
+      <a class="mapa" href="https://www.google.com/maps/search/?api=1&amp;query=The%20Bubble%2C%20Av.%20Zico%20Arouca%2C%20440%2C%20Via%20Noroeste%2C%20Vale%20Santo%20Ant%C3%B4nio" target="_blank" rel="noopener">Ver no mapa</a>
+    </section>
 
     <form id="rsvp" novalidate>
       <div class="field">
@@ -205,17 +209,12 @@ const CONFIG = {
   SUPABASE_URL: "COLE_AQUI_A_URL_DO_SUPABASE",
   SUPABASE_ANON_KEY: "COLE_AQUI_A_ANON_KEY",
 
-  titulo: "Aniversário do Dante",
-  local: "The Bubble",
-  endereco: "Av. Zico Arouca, 440, Via Noroeste, Vale Santo Antônio"
+  titulo: "Aniversário do Dante"
 };
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
 document.title = CONFIG.titulo;
-$("cfg-local").textContent = CONFIG.local;
-$("cfg-endereco").textContent = CONFIG.endereco;
-$("cfg-mapa").href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(CONFIG.local + ", " + CONFIG.endereco);
 let sb = null;
 try { sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY); }
 catch (e) { console.error("Configuração do Supabase inválida:", e); }
