@@ -109,6 +109,28 @@ input:focus,select:focus,button:focus-visible{outline:3px solid var(--yellow); o
 .toolbar{display:flex; gap:10px; justify-content:space-between; align-items:center}
 .link{font:inherit; font-weight:700; color:var(--blue); background:none; border:0; cursor:pointer; padding:6px 0}
 h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
+
+/* Impressão / PDF */
+#impressao{display:none}
+@media print{
+  @page{size:A4; margin:14mm}
+  body{background:#fff !important; color:#000 !important; font-size:11pt}
+  .wrap{max-width:none; padding:0}
+  .wrap > main{display:none !important}
+  #impressao{display:block !important; font-family:"Nunito",Arial,sans-serif; color:#000}
+  #impressao h1{font-size:18pt; margin:0 0 2pt; color:#000}
+  #impressao .resumo{margin:0 0 10pt; font-size:10pt}
+  #impressao table{width:100%; border-collapse:collapse}
+  #impressao th{text-align:left; font-size:9pt; border-bottom:1.5pt solid #000; padding:3pt 4pt}
+  #impressao td{padding:3pt 4pt; vertical-align:top}
+  #impressao tr.familia td{border-top:0.75pt solid #999; padding-top:6pt}
+  #impressao tr.familia:first-child td{border-top:0}
+  #impressao td.nome.titular{font-weight:700}
+  #impressao td.nome.acomp{padding-left:18pt}
+  #impressao td.chegou{width:40pt; text-align:center}
+  #impressao td.chegou span{display:inline-block; width:10pt; height:10pt; border:1pt solid #000}
+  #impressao tbody tr{break-inside:avoid}
+}
 </style>
 </head>
 <body>
@@ -173,7 +195,7 @@ h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
     <section class="panel hidden" id="painel">
       <div class="toolbar">
         <h2 style="margin:0">Confirmados</h2>
-        <div><button class="link" id="atualizar">Atualizar</button> · <button class="link" id="sair">Sair</button></div>
+        <div><button class="link" id="imprimir">Baixar PDF</button> · <button class="link" id="atualizar">Atualizar</button> · <button class="link" id="sair">Sair</button></div>
       </div>
       <div class="stats">
         <div class="stat"><span class="big" id="s-total">0</span><small>pessoas no total</small></div>
@@ -187,6 +209,7 @@ h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
       <div id="nao-vao"></div>
     </section>
   </main>
+  <section id="impressao" aria-hidden="true"></section>
 </div>
 
 <script>
@@ -284,10 +307,12 @@ $("outra").onclick = () => {
 /* ---------- Área do anfitrião ---------- */
 function rotuloIdade(i){ return i === 0 ? "menos de 1 ano" : `${i} ${i === 1 ? "ano" : "anos"}`; }
 
+let ultimaLista = [];
 async function carregarLista(){
   const { data, error } = await sb.from("rsvp").select("*").order("created_at", { ascending: false });
   if (error){ $("vao").textContent = "Não foi possível carregar a lista. Tente Atualizar."; return; }
 
+  ultimaLista = data;
   const vao = data.filter(r => r.vai), nao = data.filter(r => !r.vai);
   let adultos = 0, idades = [];
   vao.forEach(r => { adultos += 1 + (r.acompanhantes || []).length; (r.criancas || []).forEach(c => idades.push(c.idade)); });
@@ -341,6 +366,41 @@ $("entrar").onclick = async () => {
   const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("senha").value });
   if (error){ $("erro-login").textContent = "E-mail ou senha incorretos."; return; }
   $("login").classList.add("hidden"); $("painel").classList.remove("hidden"); carregarLista();
+};
+
+function montarImpressao(){
+  const familias = ultimaLista.filter(r => r.vai)
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  let adultos = 0, criancas = 0;
+  const box = $("impressao"); box.innerHTML = "";
+  const h1 = document.createElement("h1"); h1.textContent = CONFIG.titulo + " · Lista de convidados";
+  const tbody = document.createElement("tbody");
+  const linha = (cls, nome, tipo, idade, nomeCls) => {
+    const tr = document.createElement("tr"); if (cls) tr.className = cls;
+    [[nome, "nome " + nomeCls], [tipo, ""], [idade, ""], ["", "chegou"]].forEach(([txt, c]) => {
+      const td = document.createElement("td"); td.className = c; td.textContent = txt;
+      if (c === "chegou") td.append(document.createElement("span"));
+      tr.append(td);
+    });
+    tbody.append(tr);
+  };
+  familias.forEach(r => {
+    adultos++; linha("familia", r.nome, "Adulto", "", "titular");
+    (r.acompanhantes || []).forEach(a => { adultos++; linha("", a, "Adulto", "", "acomp"); });
+    (r.criancas || []).forEach(c => { criancas++; linha("", c.nome, "Criança", rotuloIdade(c.idade), "acomp"); });
+  });
+  const resumo = document.createElement("p"); resumo.className = "resumo";
+  resumo.textContent = `${adultos + criancas} pessoas (${adultos} adultos e ${criancas} crianças), ${familias.length} famílias. Gerada em ${new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.`;
+  const table = document.createElement("table");
+  table.innerHTML = "<thead><tr><th>Nome</th><th>Tipo</th><th>Idade</th><th>Chegou</th></tr></thead>";
+  table.append(tbody);
+  box.append(h1, resumo, table);
+}
+$("imprimir").onclick = async () => {
+  await carregarLista();
+  if (!ultimaLista.some(r => r.vai)){ alert("Ainda não há confirmações para imprimir."); return; }
+  montarImpressao();
+  window.print();
 };
 $("atualizar").onclick = carregarLista;
 $("sair").onclick = async () => { await sb.auth.signOut(); location.reload(); };
