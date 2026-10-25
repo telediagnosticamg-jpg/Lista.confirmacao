@@ -37,7 +37,7 @@ body{
 h1,h2,.big{font-family:"Baloo 2","Nunito",system-ui,sans-serif; line-height:1.1}
 
 /* Convite */
-.hero{text-align:center; position:relative; padding:12px 0 8px}
+.hero{text-align:center; position:relative; padding:12px 0 8px; margin-bottom:14px}
 .poster{display:block; width:100%; height:auto; border-radius:22px; border:4px solid var(--yellow); box-shadow:0 6px 0 var(--red)}
 .age{
   font-family:"Baloo 2",system-ui,sans-serif; font-weight:800;
@@ -51,12 +51,13 @@ h1,h2,.big{font-family:"Baloo 2","Nunito",system-ui,sans-serif; line-height:1.1}
 .dots span{position:absolute; border-radius:50%}
 .hero h1{font-size:34px; margin:14px 0 4px; color:var(--red)}
 .hero p{margin:0; color:var(--muted)}
-.info{
-  margin:22px 0 26px; padding:16px 18px; background:var(--surface);
-  border:2px dashed var(--line); border-radius:18px;
-}
-.info div{display:flex; gap:10px; padding:3px 0}
-.info b{min-width:64px; color:var(--muted); font-weight:600}
+
+/* Endereço */
+.local{display:flex; gap:12px; align-items:center; margin:0 0 22px; padding:14px 16px; background:var(--surface); border:2px solid var(--line); border-radius:18px}
+.local div{flex:1}
+.local strong{display:block}
+.local span{color:var(--muted); font-size:15px}
+.mapa{flex:none; font:inherit; font-weight:700; font-size:15px; color:#fff; background:var(--blue); border-radius:12px; padding:10px 14px; text-decoration:none}
 
 /* Formulário */
 form,.panel{background:var(--surface); border-radius:22px; padding:22px 18px; border:2px solid var(--line)}
@@ -126,11 +127,6 @@ h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
         alt="Convite: aniversário de 3 anos do Dante, domingo, 15/11/2026, às 15h, no The Bubble. Venham com seus uniformes comemorar comigo!">
     </header>
 
-    <section class="info" aria-label="Detalhes da festa">
-      <div><b>Quando</b><span id="cfg-quando"></span></div>
-      <div><b>Onde</b><span id="cfg-onde"></span></div>
-      <div id="cfg-prazo-linha"><b>Responda</b><span id="cfg-prazo"></span></div>
-    </section>
 
     <form id="rsvp" novalidate>
       <div class="field">
@@ -209,23 +205,20 @@ const CONFIG = {
   SUPABASE_URL: "COLE_AQUI_A_URL_DO_SUPABASE",
   SUPABASE_ANON_KEY: "COLE_AQUI_A_ANON_KEY",
 
-  idade: "3",                                   // número grande do topo
   titulo: "Aniversário do Dante",
-  subtitulo: "Venham com seus uniformes comemorar comigo!",
-  quando: "Domingo, 15/11/2026, às 15h",
-  onde: "The Bubble",
-  prazo: ""                            // deixe "" para esconder
+  local: "The Bubble",
+  endereco: "Av. Zico Arouca, 440, Via Noroeste, Vale Santo Antônio"
 };
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
-const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-
-// Preenche o convite
-$("cfg-quando").textContent = CONFIG.quando;
-$("cfg-onde").textContent = CONFIG.onde;
-if (CONFIG.prazo) $("cfg-prazo").textContent = CONFIG.prazo; else $("cfg-prazo-linha").remove();
 document.title = CONFIG.titulo;
+$("cfg-local").textContent = CONFIG.local;
+$("cfg-endereco").textContent = CONFIG.endereco;
+$("cfg-mapa").href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(CONFIG.local + ", " + CONFIG.endereco);
+let sb = null;
+try { sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY); }
+catch (e) { console.error("Configuração do Supabase inválida:", e); }
 
 /* ---------- Formulário ---------- */
 let vai = true;
@@ -287,6 +280,7 @@ $("rsvp").onsubmit = async e => {
     }
   }
 
+  if (!sb){ erro.textContent = "O formulário ainda não está configurado. Avise quem enviou o convite."; return; }
   const btn = $("enviar"); btn.disabled = true; btn.textContent = "Enviando…";
   const { error } = await sb.from("rsvp").insert({ nome, vai, acompanhantes, criancas });
   btn.disabled = false; setVai(vai);
@@ -357,6 +351,7 @@ async function carregarLista(){
 
 async function mostrarAdmin(){
   $("convite").classList.add("hidden"); $("admin").classList.remove("hidden");
+  if (!sb){ $("erro-login").textContent = "Falta colar a URL e a anon key do Supabase no bloco CONFIGURAÇÃO."; return; }
   const { data } = await sb.auth.getSession();
   if (data.session){ $("login").classList.add("hidden"); $("painel").classList.remove("hidden"); carregarLista(); }
 }
