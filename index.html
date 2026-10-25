@@ -68,13 +68,6 @@ input,select{
 }
 input:focus,select:focus,button:focus-visible{outline:3px solid var(--yellow); outline-offset:2px}
 .field{margin-bottom:18px}
-.choice{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-.choice button{
-  font:inherit; font-weight:700; padding:13px 8px; border-radius:14px; cursor:pointer;
-  background:var(--field); color:var(--ink); border:2px solid var(--line);
-}
-.choice button[aria-pressed="true"]{background:var(--blue); color:#fff; border-color:var(--blue)}
-.choice button.no[aria-pressed="true"]{background:var(--muted); border-color:var(--muted)}
 .group{margin-top:22px; padding-top:18px; border-top:2px dashed var(--line)}
 .group h2{font-size:22px; margin:0 0 2px}
 .group p{margin:0 0 12px; color:var(--muted); font-size:15px}
@@ -100,6 +93,7 @@ input:focus,select:focus,button:focus-visible{outline:3px solid var(--yellow); o
 .thanks{text-align:center}
 .thanks .big{font-size:56px; color:var(--blue); margin:0}
 .hidden{display:none !important}
+.tech{color:var(--muted); font-size:13px; margin:4px 0 0; word-break:break-word}
 
 /* Lista (área do anfitrião) */
 .stats{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:16px 0}
@@ -138,13 +132,6 @@ h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
         <input id="nome" autocomplete="name" maxlength="100" placeholder="Nome e sobrenome">
       </div>
 
-      <div class="field">
-        <label id="vai-label">Você vai?</label>
-        <div class="choice" role="group" aria-labelledby="vai-label">
-          <button type="button" id="btn-sim" aria-pressed="true">Vou, sim!</button>
-          <button type="button" id="btn-nao" class="no" aria-pressed="false">Não vou poder</button>
-        </div>
-      </div>
 
       <div id="extras">
         <div class="group">
@@ -163,6 +150,7 @@ h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
 
       <button type="submit" class="submit" id="enviar">Confirmar presença</button>
       <p class="error" id="erro" role="alert"></p>
+      <p class="tech" id="erro-tecnico"></p>
     </form>
 
     <section class="panel thanks hidden" id="obrigado">
@@ -206,7 +194,7 @@ h3{font-family:"Baloo 2",system-ui,sans-serif; margin:20px 0 0; font-size:20px}
    CONFIGURAÇÃO — altere só esta parte
    ============================================================ */
 const CONFIG = {
-  SUPABASE_URL: "https://listaconfirmacao.vercel.app/",
+  SUPABASE_URL: "https://kypwzyunxenqpjwlxzly.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5cHd6eXVueGVucXBqd2x4emx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NTIzNTEsImV4cCI6MjEwODUyODM1MX0.bHI-f9Mmm-FPWy8LoX4aKxPTf-hcBR6081hZnUV7t2I",
 
   titulo: "Aniversário do Dante"
@@ -220,16 +208,7 @@ try { sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANO
 catch (e) { console.error("Configuração do Supabase inválida:", e); }
 
 /* ---------- Formulário ---------- */
-let vai = true;
-function setVai(v){
-  vai = v;
-  $("btn-sim").setAttribute("aria-pressed", v);
-  $("btn-nao").setAttribute("aria-pressed", !v);
-  $("extras").classList.toggle("hidden", !v);
-  $("enviar").textContent = v ? "Confirmar presença" : "Enviar resposta";
-}
-$("btn-sim").onclick = () => setVai(true);
-$("btn-nao").onclick = () => setVai(false);
+const vai = true;
 
 function botaoRemover(row){
   const b = document.createElement("button");
@@ -261,7 +240,7 @@ $("add-crianca").onclick = addCrianca;
 
 $("rsvp").onsubmit = async e => {
   e.preventDefault();
-  const erro = $("erro"); erro.textContent = "";
+  const erro = $("erro"); erro.textContent = ""; $("erro-tecnico").textContent = "";
   const nome = $("nome").value.trim();
   if (!nome){ erro.textContent = "Escreva seu nome para enviar."; $("nome").focus(); return; }
 
@@ -282,8 +261,12 @@ $("rsvp").onsubmit = async e => {
   if (!sb){ erro.textContent = "O formulário ainda não está configurado. Avise quem enviou o convite."; return; }
   const btn = $("enviar"); btn.disabled = true; btn.textContent = "Enviando…";
   const { error } = await sb.from("rsvp").insert({ nome, vai, acompanhantes, criancas });
-  btn.disabled = false; setVai(vai);
-  if (error){ erro.textContent = "A resposta não foi enviada. Verifique sua internet e tente de novo."; console.error(error); return; }
+  btn.disabled = false; btn.textContent = "Confirmar presença";
+  if (error){
+    erro.textContent = "A resposta não foi enviada. Verifique sua internet e tente de novo.";
+    $("erro-tecnico").textContent = "Detalhe: " + (error.message || error.code || JSON.stringify(error));
+    console.error(error); return;
+  }
 
   const pessoas = 1 + acompanhantes.length + criancas.length;
   $("obrigado-texto").textContent = vai
@@ -295,7 +278,6 @@ $("rsvp").onsubmit = async e => {
 
 $("outra").onclick = () => {
   $("rsvp").reset(); $("lista-adultos").innerHTML = ""; $("lista-criancas").innerHTML = "";
-  setVai(true);
   $("obrigado").classList.add("hidden"); $("rsvp").classList.remove("hidden");
 };
 
